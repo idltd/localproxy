@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Local Proxy</string>
+    <string name="notification_channel_name">Proxy Service</string>
+    <string name="notification_channel_description">Shows when proxy server is running</string>
+    <string name="notification_title">Proxy Running</string>
+    <string name="notification_text">Forwarding to %1$s on port %2$d</string>
+    <string name="stop_action">Stop</string>
+</resources>
