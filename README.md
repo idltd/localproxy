@@ -28,6 +28,8 @@ The app creates a local proxy server on your device that listens on a configurab
 - Address history with quick-select and delete
 - Copy/clear logs
 - Handles both HTTP and HTTPS traffic
+- 10-second connect timeout — fails fast when the target is unreachable
+- Cache-safe 502 errors — includes `Cache-Control: no-store` to prevent cache poisoning
 
 ## Usage
 
