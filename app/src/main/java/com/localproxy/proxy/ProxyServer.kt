@@ -2,6 +2,7 @@ package com.localproxy.proxy
 
 import kotlinx.coroutines.*
 import java.io.*
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
@@ -119,7 +120,7 @@ class ProxyServer(
         ProxyLogger.info("CONNECT tunnel to $connectHost:$connectPort")
 
         try {
-            Socket(connectHost, connectPort).use { targetSocket ->
+            Socket().apply { connect(InetSocketAddress(connectHost, connectPort), 10_000) }.use { targetSocket ->
                 val response = "HTTP/1.1 200 Connection Established\r\n\r\n"
                 clientOut.write(response.toByteArray())
                 clientOut.flush()
@@ -153,7 +154,7 @@ class ProxyServer(
             }
         } catch (e: Exception) {
             ProxyLogger.error("CONNECT failed to $connectHost:$connectPort - ${e.message}")
-            val errorResponse = "HTTP/1.1 502 Bad Gateway\r\n\r\n"
+            val errorResponse = "HTTP/1.1 502 Bad Gateway\r\nCache-Control: no-store, no-cache\r\n\r\n"
             try {
                 clientOut.write(errorResponse.toByteArray())
                 clientOut.flush()
@@ -172,7 +173,7 @@ class ProxyServer(
         ProxyLogger.info("HTTP request -> $targetHost:$targetPort")
 
         try {
-            Socket(targetHost, targetPort).use { targetSocket ->
+            Socket().apply { connect(InetSocketAddress(targetHost, targetPort), 10_000) }.use { targetSocket ->
                 val targetIn = BufferedInputStream(targetSocket.getInputStream())
                 val targetOut = BufferedOutputStream(targetSocket.getOutputStream())
 
@@ -205,7 +206,13 @@ class ProxyServer(
             }
         } catch (e: Exception) {
             ProxyLogger.error("HTTP forward failed: ${e.message}")
-            val errorResponse = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n"
+            val body = "502 Bad Gateway - target server unreachable"
+            val errorResponse = "HTTP/1.1 502 Bad Gateway\r\n" +
+                "Content-Type: text/plain\r\n" +
+                "Content-Length: ${body.length}\r\n" +
+                "Cache-Control: no-store, no-cache\r\n" +
+                "\r\n" +
+                body
             try {
                 clientOut.write(errorResponse.toByteArray())
                 clientOut.flush()
