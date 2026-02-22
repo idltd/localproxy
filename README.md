@@ -71,6 +71,15 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 - Kotlin Coroutines
 - Android Foreground Service
 
+## Current State
+
+Working proxy service. A standalone developer tool for enabling PWA secure-context features against a local dev server without HTTPS.
+
+## Where It's Heading
+
+- Configuration UI (target host/port)
+- Per-app proxy rules
+
 ## License
 
 MIT
