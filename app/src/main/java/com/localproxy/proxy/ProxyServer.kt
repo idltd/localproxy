@@ -170,6 +170,24 @@ class ProxyServer(
         requestLine: String,
         headers: Map<String, String>
     ) {
+        // Handle CORS preflight locally — no need to forward to target
+        if (requestLine.startsWith("OPTIONS ")) {
+            ProxyLogger.info("CORS preflight -> responding locally")
+            val response = "HTTP/1.1 204 No Content\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD\r\n" +
+                "Access-Control-Allow-Headers: *\r\n" +
+                "Access-Control-Max-Age: 86400\r\n" +
+                "\r\n"
+            try {
+                clientOut.write(response.toByteArray())
+                clientOut.flush()
+            } catch (e: Exception) {
+                // Ignore write errors
+            }
+            return
+        }
+
         ProxyLogger.info("HTTP request -> $targetHost:$targetPort")
 
         try {
@@ -200,7 +218,7 @@ class ProxyServer(
                 }
                 targetOut.flush()
 
-                relay(targetIn, clientOut)
+                relayResponseWithCors(targetIn, clientOut)
                 clientOut.flush()
                 ProxyLogger.info("HTTP response sent")
             }
@@ -220,6 +238,34 @@ class ProxyServer(
                 // Ignore write errors
             }
         }
+    }
+
+    // Parse the HTTP response header block, strip any existing CORS headers, inject our own,
+    // then relay the body verbatim.
+    private fun relayResponseWithCors(targetIn: InputStream, clientOut: OutputStream) {
+        val statusLine = readLine(targetIn) ?: return
+        val responseHeaders = mutableListOf<String>()
+        while (true) {
+            val line = readLine(targetIn) ?: break
+            if (line.isEmpty()) break
+            // Drop any existing CORS headers — we'll add canonical ones below
+            if (!line.lowercase().startsWith("access-control-")) {
+                responseHeaders.add(line)
+            }
+        }
+
+        val sb = StringBuilder()
+        sb.append("$statusLine\r\n")
+        for (header in responseHeaders) {
+            sb.append("$header\r\n")
+        }
+        sb.append("Access-Control-Allow-Origin: *\r\n")
+        sb.append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD\r\n")
+        sb.append("Access-Control-Allow-Headers: *\r\n")
+        sb.append("\r\n")
+        clientOut.write(sb.toString().toByteArray())
+
+        relay(targetIn, clientOut)
     }
 
     private fun relay(input: InputStream, output: OutputStream) {
