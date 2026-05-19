@@ -199,6 +199,10 @@ class ProxyServer(
 
                 val modifiedHeaders = headers.toMutableMap()
                 modifiedHeaders["Host"] = if (targetPort == 80) targetHost else "$targetHost:$targetPort"
+                // Force Connection: close so the target sends EOF after the response body.
+                // Without this, HTTP/1.1 keep-alive means relay() blocks forever
+                // waiting for more data on an idle connection.
+                modifiedHeaders["Connection"] = "close"
 
                 for ((key, value) in modifiedHeaders) {
                     targetOut.write("$key: $value\r\n".toByteArray())
